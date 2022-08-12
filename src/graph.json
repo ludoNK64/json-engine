@@ -1,0 +1,29 @@
+[
+  { 
+    "id": "vendor-available-1",
+    "type": "place",
+    "value" : ["V1"]
+  },
+  {
+    "id": "client-with-item-2",
+    "type": "place",
+    "value": ["Alice", "shirt"] 
+  },
+  {
+    "id": "vendor-with-item-3",
+    "type": "place",
+    "value": ["V1", "shirt"] 
+  },
+  {
+    "id": "client-with-money",
+    "type": "place",
+    "value": ["Alice", "50 EUR"] 
+  },
+  { 
+    "id": "take-home",
+    "type": "transition",
+    "value": ["take", "home"],
+    "inplaces": [ "vendor-available-1", "client-with-item-2" ],
+    "outplaces": [ "vendor-with-item-3", "client-with-money" ]
+  }
+]
