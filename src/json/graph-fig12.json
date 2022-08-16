@@ -1,0 +1,64 @@
+[
+  {
+    "id": "vendor-available-1",
+    "type": "place",
+    "value": ["V1"]
+  },
+  {
+    "id": "client-wants-item-2",
+    "type": "place",
+    "value": ["Alice", "shirt"]
+  },
+  {
+    "id": "cashier-available-3",
+    "type": "place",
+    "value": ["cashier"]
+  },
+  {
+    "id": "vendor-with-item-4",
+    "type": "place",
+    "value": ["V1", "shirt"]
+  },
+  {
+    "id": "client-with-money-5",
+    "type": "place",
+    "value": ["Alice", "50 EUR"]
+  },
+  {
+    "id": "vendor-with-item-6",
+    "type": "place",
+    "value": ["V1", "with packed", "shirt"]
+  },
+  {
+    "id": "client-with-receipt-7",
+    "type": "place",
+    "value": ["Alice", "receipt"]
+  },
+  {
+    "id": "cashier-available-8",
+    "type": "place",
+    "value": ["cashier"]
+  },
+
+  {
+    "id": "take-home",
+    "type": "transition",
+    "value": ["shirt to", "take home"],
+    "inplaces": ["vendor-available-1", "client-wants-item-2"],
+    "outplaces": ["vendor-with-item-4", "client-with-money-5"]
+  },
+  {
+    "id": "vendor-pack",
+    "type": "transition",
+    "value": ["V1", "packs", "shirt"],
+    "inplaces": ["vendor-with-item-4"],
+    "outplaces": ["vendor-with-item-6"]
+  },
+  {
+    "id": "client-pay",
+    "type": "transition",
+    "value": ["Alice", "pays", "take home"],
+    "inplaces": ["client-with-money-5", "cashier-available-3"],
+    "outplaces": ["client-with-receipt-7", "cashier-available-8"]
+  } 
+]
