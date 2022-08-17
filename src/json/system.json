@@ -1,0 +1,29 @@
+[
+  { 
+    "id": "vendor-available",
+    "type": "place",
+    "value" : ["V1"]
+  },
+  ["f", "shirt", "50€"],
+  {
+    "id": "client-with-item",
+    "type": "place",
+    "value": ["Alice", "shirt"] 
+  },
+  {
+    "id": "vendor-with-item",
+    "type": "place",
+  },
+  {
+    "id": "client-with-money",
+    "type": "place"
+  },
+  { 
+    "id": "take-home",
+    "type": "transition",
+    "value": ["take", "home"],
+    "inplaces": [ ["vendor-available-1", x], ["client-with-item-2", ["y", "z"]] ],
+    "outplaces": [ ["vendor-with-item-3", ["y", "z"]], ["client-with-money", ["x", "m"]] ],
+    "equations": ["m", ["f", "z"]]
+  }
+]
