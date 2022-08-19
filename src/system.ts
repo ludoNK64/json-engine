@@ -1,3 +1,4 @@
+import YAML from 'yaml'
 import { attribute, digraph, toDot } from 'ts-graphviz'
 import { Place, Transition, Flow } from './types'
 
@@ -76,9 +77,9 @@ function makeGraph(arr:Array<any>)
 
 
 try {
-  const data = fs.readFileSync('./json/system.json', 'utf8')
+  const data = fs.readFileSync('./yaml/system.yaml', 'utf8')
 
-  makeGraph(JSON.parse(data))
+  makeGraph(YAML.parse(data))
 
 } catch (err) {
   console.error(err)

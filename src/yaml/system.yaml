@@ -1,0 +1,42 @@
+---
+- id: vendor-available
+  type: place
+  value:
+  - V1
+- id: client-with-item
+  type: place
+  value:
+  - Alice
+  - shirt
+- id: vendor-with-item
+  type: place
+  value: []
+- id: client-with-money
+  type: place
+  value: []
+- id: take-home
+  type: transition
+  value:
+  - item to
+  - take
+  - home
+  inplaces:
+  - - vendor-available
+    - y
+  - - client-with-item
+    - - y
+      - z
+  outplaces:
+  - - vendor-with-item
+    - - y
+      - z
+  - - client-with-money
+    - - x
+      - m
+  equations:
+  - m
+  - - f
+    - z
+- - f
+  - shirt
+  - 50€
