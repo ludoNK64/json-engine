@@ -76,10 +76,21 @@ function makeGraph(arr:Array<any>)
 ////////////////////////////////////////////////////////
 
 
+function executeOneTransition(system: any[]) {
+    // search for a transition
+    // choose objects from the input places
+    // bind variables
+    // remove objects from the input places
+    // create objects for the output places
+
+}
+
 try {
   const data = fs.readFileSync('./yaml/system.yaml', 'utf8')
+    const system = YAML.parse(data)
+  makeGraph(system)
 
-  makeGraph(YAML.parse(data))
+  executeOneTransition(system)
 
 } catch (err) {
   console.error(err)

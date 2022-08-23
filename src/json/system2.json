@@ -2,22 +2,22 @@
   { 
     "id": "vendor-available",
     "type": "place",
-    "value" : ["V1", "V2"]
+    "value" : ["V2"]
   },
   {
     "id": "client-with-item",
     "type": "place",
-    "value": [["Alice", "shirt"], ["Bob", "shoes"]]
+    "value": [["Bob", "shoes"]]
   },
   {
     "id": "vendor-with-item",
     "type": "place",
-    "value": []
+    "value": [["V1", "shirt"]]
   },
   {
     "id": "client-with-money",
     "type": "place",
-    "value": []
+    "value": [["Alice", "50€"]]
   },
   { 
     "id": "take-home",
