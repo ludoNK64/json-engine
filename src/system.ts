@@ -77,12 +77,11 @@ function makeGraph(arr:Array<any>)
 
 
 function executeOneTransition(system: any[]) {
-    // search for a transition
-    // choose objects from the input places
-    // bind variables
-    // remove objects from the input places
-    // create objects for the output places
-
+  // search for a transition
+  // choose objects from the input places
+  // bind variables
+  // remove objects from the input places
+  // create objects for the output places
 }
 
 try {

@@ -24,7 +24,7 @@
   - - vendor-available
     - y
   - - client-with-item
-    - - y
+    - - x
       - z
   outplaces:
   - - vendor-with-item
@@ -39,4 +39,4 @@
     - z
 - - f
   - shirt
-  - 50€
+  - 50 EUR
