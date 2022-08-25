@@ -17,6 +17,7 @@ class JsonEngine {
 	isYaml : Boolean
 	transitions : any[]
 	places : Map<String, any> = new Map()
+	varBindingMap:Map<String, any> = new Map() // (variable, value) pairs
 	fnMap: Map<String, Map<String, String>> = new Map()
 
 
@@ -110,9 +111,13 @@ class JsonEngine {
 		const equations = transition.equations
 		let equationsMap:Map<String, any[]> = new Map()
 
-		equationsMap.set(equations[0], equations[1]) // loop if multiple
-
-		let varBindingMap = new Map<String, any>() // (variable, value) pairs
+		if(Array.isArray(equations[0])) {
+			equations.forEach(eq => {
+				equationsMap.set(eq[0], eq[1])
+			})
+		} else {
+			equationsMap.set(equations[0], equations[1]) // loop if multiple
+		}
 
 		// Bind variables from input places
 		transition.inplaces.forEach(inPlace => {
@@ -120,9 +125,9 @@ class JsonEngine {
 			const _var = inPlace[1] // get variables
 			// bind them
 			if(Array.isArray(_var)) {
-				_var.forEach((v, index) => varBindingMap.set(v, _place.value[index]))
+				_var.forEach((v, index) => this.varBindingMap.set(v, _place.value[index]))
 			} else { // string
-				varBindingMap.set(_var, _place.value[0])
+				this.varBindingMap.set(_var, _place.value[0])
 			}
 			// make it empty
 			_place.value = []
@@ -139,9 +144,9 @@ class JsonEngine {
 					if(equationsMap.has(v)) { // get value from the function run
 						const _params = equationsMap.get(v) // ['f', 'z']
 						// 'f' then value of 'z'
-						out.push(this.fnMap.get(_params[0]).get( varBindingMap.get(_params[1])) )
+						out.push(this.fnMap.get(_params[0]).get( this.varBindingMap.get(_params[1])) )
 					} else { // just add the value
-						out.push(varBindingMap.get(v))
+						out.push(this.varBindingMap.get(v))
 					}
 					// fill value of the place
 					_place.value = out
@@ -202,7 +207,7 @@ class JsonEngine {
 	      	let [id, label] = [...outPlace]
 
 	      	if(Array.isArray(label)) {
-	      		label = '(' + label.join(', ') + ')'
+	      		label = label.length > 1 ? '(' + label.join(', ') + ')' : label[0]
 	      	}
 	        g.edge([transitionNode, placeNodesMap.get(id)], {[attribute.label]: label})
 	      })
@@ -228,6 +233,6 @@ class JsonEngine {
 /////////////////////////////////////////////////
 
 
-const engine = new JsonEngine('./yaml/system.yaml')
+const engine = new JsonEngine('./json/system-fig12.json')
 
 engine.execute()
