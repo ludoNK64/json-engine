@@ -1,6 +1,7 @@
 import YAML from 'yaml'
 import { attribute, digraph, toDot } from 'ts-graphviz'
-import { Place, Transition, Flow } from './types'
+// import { Place, Transition, Flow } from './types'
+import { BindingsList } from './BindingsList'
 
 
 const hpccWasm = require('@hpcc-js/wasm')
@@ -19,6 +20,7 @@ class JsonEngine {
 	places : Map<String, any> = new Map()
 	varBindingMap:Map<String, any> = new Map() // (variable, value) pairs
 	fnMap: Map<String, Map<String, String>> = new Map()
+	bindingsList:BindingsList = new BindingsList()
 
 
 	constructor(filename:String) {
@@ -126,9 +128,13 @@ class JsonEngine {
 			// bind them
 			if(Array.isArray(_var)) {
 				_var.forEach((v, index) => this.varBindingMap.set(v, _place.value[index]))
+				// this.bindingsList.expandList(_var, _place.value)
 			} else { // string
 				this.varBindingMap.set(_var, _place.value[0])
+				// this.bindingsList.expand(_var, _place.value)
 			}
+			const fnCall = Array.isArray(_var) ? "expandList" : "expand"
+			this.bindingsList[fnCall](_var, _place.value)
 			// make it empty
 			_place.value = []
 		})
