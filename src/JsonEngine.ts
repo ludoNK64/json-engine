@@ -18,7 +18,6 @@ class JsonEngine {
   isYaml : Boolean
   transitions : any[]
   places : Map<String, any> = new Map()
-  varBindingMap:Map<String, any> = new Map() // (variable, value) pairs
   fnMap: Map<String, Map<String, String>> = new Map()
   bindingsList:BindingsList = new BindingsList()
 
@@ -81,22 +80,8 @@ class JsonEngine {
       // Maybe check if current transition input places
       // have values (to know if already run) before 
       // running the function below below.
-      this.executeOneTransition(t)
-
-      // Update 'system' based on variables updates
-      // We do not really need functions in it. Maybe edges labels too.
-      this.system = []
-      for(const place of this.places.values()) {
-        this.system.push(place)
-      }
-      this.system.push(...this.transitions)
-
-      // Make SVG graph
-      this.toSVG(`G${iter}.svg`)
-
-      // Output JSON or YAML text notation
-      this.toFile(`G${iter}`)
-
+      this.executeOneTransition(t, iter)
+      
       iter++
     })
   }
@@ -109,9 +94,10 @@ class JsonEngine {
    * @param {any} transition : transition object
    * @return {void}
    */
-  private executeOneTransition(transition:any) {
+  private executeOneTransition(transition:any, iter:Number) {
     const equations = transition.equations
-    let equationsMap:Map<String, any[]> = new Map()
+    const equationsMap:Map<String, any[]> = new Map()
+    const originalInPlacesValue:Map<String, any[]> = new Map()
 
     if(Array.isArray(equations[0])) {
       equations.forEach(eq => {
@@ -121,48 +107,68 @@ class JsonEngine {
       equationsMap.set(equations[0], equations[1]) // loop if multiple
     }
 
-    // this.bindingsList.expandEquation(?, eq[0], (st, oldMap, varName) => {
-    //   // get parameter value
-    //   // get result of function call
-    //   return []
-    // })
-
     // Bind variables from input places
     transition.inplaces.forEach(inPlace => {
       const _place = this.places.get(inPlace[0]) // get by id
       const _var = inPlace[1] // get variables
-      // bind them
-      if(Array.isArray(_var)) {
-        _var.forEach((v, index) => this.varBindingMap.set(v, _place.value[index]))
-      } else { // string
-        this.varBindingMap.set(_var, _place.value[0])
-      }
-      const fnCall = Array.isArray(_var) ? "expandList" : "expand"
-      this.bindingsList[fnCall](_var, _place.value)
-      // make it empty
-      _place.value = []
+      
+      // use of BindingList
+      const fn = Array.isArray(_var) ? "expandList" : "expand"
+      this.bindingsList[fn](_var, _place.value)
+
+      // Keep original values
+      originalInPlacesValue.set(inPlace[0], _place.value)
     })
 
-    // Fill output places
-    transition.outplaces.forEach(outPlace => {
-      const _place = this.places.get(outPlace[0]) // get by id
-      const _vars = outPlace[1] // get variables
-
-      if(Array.isArray(_vars)) {
-        let out = []
-        _vars.forEach(v => {
-          if(equationsMap.has(v)) { // get value from the function run
-            const _params = equationsMap.get(v) // ['f', 'z']
-            // 'f' then value of 'z'
-            out.push(this.fnMap.get(_params[0]).get( this.varBindingMap.get(_params[1])) )
-          } else { // just add the value
-            out.push(this.varBindingMap.get(v))
-          }
-          // fill value of the place
-          _place.value = out
+    // Use of BindingList to bind functions calls results
+    for(const k of equationsMap.keys()) {
+      const v = equationsMap.get(k)
+      for(const m of this.bindingsList.bindings) {
+        this.bindingsList.expandEquation(k, v[1], _ => {
+          return this.fnMap.get(v[0]).get(_)
         })
       }
-    })
+    }
+
+    // Make different outputs per iteration
+    let _iter = 1
+
+    for(const m of this.bindingsList.bindings) {
+      // fill output places
+      transition.outplaces.forEach(outPlace => {
+        const _place = this.places.get(outPlace[0]) // get by id
+        const _vars = outPlace[1] // get variables
+        _place.value = []
+
+        _vars.forEach(v => {
+          _place.value.push(m.get(v))
+        })
+      })
+
+      // update in places with unused values
+      transition.inplaces.forEach(inPlace => {
+        const _place = this.places.get(inPlace[0]) // get by id
+        let _var = inPlace[1] // get variables
+        _var = Array.isArray(_var) ? _var : [_var]
+        let usedValue = undefined
+
+        if(Array.isArray(_var)) {
+          usedValue = []
+          _var.forEach(v => usedValue.push(m.get(v)))
+        } else {
+          usedValue = m.get(_var)
+        }
+        _place.value = originalInPlacesValue.get(inPlace[0]).filter(v => v.toString() !== usedValue.toString())
+      })
+
+      // output SVG
+      this.toSVG(`G${iter}-${_iter}.svg`)
+          
+      // output notation
+      this.toNotation(`G${iter}-${_iter}`)
+
+      _iter++
+    }
   }
 
   /**
@@ -172,9 +178,15 @@ class JsonEngine {
    * @param filename {String} : output filename without extension
    * @return {void}
    */
-  private toFile(filename:String) {
+  private toNotation(filename:String) {
+    // 'system' based on variables updates
+    // We do not really need functions in it. Maybe edges labels too.
+    const sys = []
+    for(const place of this.places.values()) sys.push(place)
+    sys.push(...this.transitions)
+
     const dest = './output/' + (this.isYaml ? `yaml/${filename}.yaml` : `json/${filename}.json`)
-    fs.writeFileSync(dest, this.isYaml ? YAML.stringify(this.system) : JSON.stringify(this.system))
+    fs.writeFileSync(dest, this.isYaml ? YAML.stringify(sys) : JSON.stringify(sys))
     console.log(`Text '${dest}' written.`)
   }
 

@@ -78,13 +78,13 @@ class BindingsList {
 
 
 //////////////////////// Example ///////////////////////
-let vars = new BindingsList()
+/*let vars = new BindingsList()
 vars.expand("y", ["V1", "V2"])
 vars.expandList(["x", "z"], [["Alice", "shirt"], ["Bob", "shoes"]])
 vars.expandEquation("m", "z", (z) => {
   return ({"shirt":"50 EUR", "shoes":"120 EUR"})[z]
 })
-console.log(vars.toString())
+console.log(vars.toString())*/
 ////////////////////////////////////////////////////////
 
 
