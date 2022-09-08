@@ -2,12 +2,12 @@
   { 
     "id": "vendor-available",
     "type": "place",
-    "value" : ["V1"]
+    "value" : ["V1", "V2"]
   },
   {
     "id": "client-with-item",
     "type": "place",
-    "value": ["Alice", "shirt"]
+    "value": [["Alice", "shirt"], ["Bob", "shoes"]]
   },
   {
     "id": "vendor-with-item",
@@ -28,5 +28,6 @@
     "equations": ["m", ["f", "z"]]
   },
 
-  ["f", "shirt", "50 EUR"]
+  ["f", "shirt", "50 EUR"],
+  ["f", "shoes", "120 EUR"]
 ]

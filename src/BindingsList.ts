@@ -21,27 +21,56 @@ class BindingsList {
     }
   }
 
-  expandEquation(symbolTable, varName, userFunction)
+  // This must be call after all variables bindings.
+  expandEquation(varName, paramKeyName, userFunction)
   {
-    const oldBindings = this.bindings 
-    this.bindings = []
-
-    for(const oldMap of oldBindings) {
-      const values:String[] = userFunction(symbolTable, oldMap, varName)
-      for(const v of values) {
-        // ...
-        break
-      }
+    for(const m of this.bindings) {
+      m.set(varName, userFunction(m.get(paramKeyName)))
     }
+
+    // const oldBindings = this.bindings 
+    // this.bindings = []
+
+    // for(const oldMap of oldBindings) {
+    //   const values:String[] = userFunction(symbolTable, oldMap, varName)
+    //   for(const v of values) {
+    //     const newMap:Map<String, String> = oldMap // new Map(JSON.parse(JSON.stringify(Array.from(oldMap)))) // clone
+    //     newMap.set(varName, v)
+    //     this.bindings.push(newMap)
+    //   }
+    // }
   }
 
   expandList(varNames:String[], valuesList:String[][]) {
-    for(let i = 0 ; i < varNames.length ; i++) {
-      const valueList = [valuesList[0][i]]
-      for(let j = 1 ; j < valuesList.length ; j++) {
-        valueList.push(valuesList[j][i])
+    // for(let i = 0 ; i < varNames.length ; i++) {
+    //   const valueList = [valuesList[0][i]]
+    //   for(let j = 1 ; j < valuesList.length ; j++) {
+    //     valueList.push(valuesList[j][i])
+    //   }
+    //   this.expand(varNames[i], valueList)
+    // }
+
+    // Bind first tuple of variables values
+    for(const _map of this.bindings) {
+      for(let i = 0 ; i < varNames.length ; i++) {
+        _map.set(varNames[i], valuesList[0][i])
       }
-      this.expand(varNames[i], valueList)
+    }
+
+    // Bind remaining tuples in valuesList
+    const oldList = this.bindings
+    this.bindings = []
+
+    for(const m of oldList) this.bindings.push(m)
+
+    for(let i = 1 ; i < valuesList.length ; i++) {
+      for(const _map of oldList) {
+        const newMap:Map<String, String> = new Map(JSON.parse(JSON.stringify(Array.from(_map))))
+        for(let j = 0 ; j < varNames.length ; j++) {
+          newMap.set(varNames[j], valuesList[i][j])      
+        }
+        this.bindings.push(newMap)
+      }
     }
   }
 
@@ -53,15 +82,17 @@ class BindingsList {
     const keys = []
     for(const k of m0.keys()) keys.push(k)
 
-    console.log(keys.join(", "))
+    let str = keys.join(", ") +"\n"
 
     // Print values
     for(const m of this.bindings) {
       const values = []
       for(const v of m.values()) values.push(v)
 
-      console.log(values.join(", "))
+      str += values.join(", ") + "\n"
     }
+
+    return str
   }
 }
 
@@ -70,6 +101,9 @@ class BindingsList {
 let vars = new BindingsList()
 vars.expand("y", ["V1", "V2"])
 vars.expandList(["x", "z"], [["Alice", "shirt"], ["Bob", "shoes"]])
+vars.expandEquation("m", "z", (z) => {
+  return ({"shirt":"50 EUR", "shoes":"120 EUR"})[z]
+})
 console.log(vars.toString())
 ////////////////////////////////////////////////////////
 
