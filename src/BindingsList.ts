@@ -27,29 +27,9 @@ class BindingsList {
     for(const m of this.bindings) {
       m.set(varName, userFunction(m.get(paramKeyName)))
     }
-
-    // const oldBindings = this.bindings 
-    // this.bindings = []
-
-    // for(const oldMap of oldBindings) {
-    //   const values:String[] = userFunction(symbolTable, oldMap, varName)
-    //   for(const v of values) {
-    //     const newMap:Map<String, String> = oldMap // new Map(JSON.parse(JSON.stringify(Array.from(oldMap)))) // clone
-    //     newMap.set(varName, v)
-    //     this.bindings.push(newMap)
-    //   }
-    // }
   }
 
   expandList(varNames:String[], valuesList:String[][]) {
-    // for(let i = 0 ; i < varNames.length ; i++) {
-    //   const valueList = [valuesList[0][i]]
-    //   for(let j = 1 ; j < valuesList.length ; j++) {
-    //     valueList.push(valuesList[j][i])
-    //   }
-    //   this.expand(varNames[i], valueList)
-    // }
-
     // Bind first tuple of variables values
     for(const _map of this.bindings) {
       for(let i = 0 ; i < varNames.length ; i++) {
