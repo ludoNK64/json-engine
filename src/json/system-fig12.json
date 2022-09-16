@@ -2,12 +2,12 @@
   {
     "id": "vendor-available",
     "type": "place",
-    "value": ["V1"]
+    "value": ["V1", "V2"]
   },
   {
     "id": "client-wants-item",
     "type": "place",
-    "value": ["Alice", "shirt"]
+    "value": [["Alice", "shirt"], ["Bob", "shoes"]]
   },
   {
     "id": "cashier-available-1",
@@ -66,6 +66,9 @@
   },
 
   ["f", "shirt", "50 EUR"],
+  ["f", "shoes", "120 EUR"],
   ["p", "shirt", "with packed shirt"],
-  ["v", "shirt", "with receipt"]
+  ["v", "shirt", "with receipt"],
+  ["p", "shoes", "with packed shoes"],
+  ["v", "shoes", "with receipt"]
 ]

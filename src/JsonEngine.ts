@@ -2,11 +2,12 @@ import YAML from 'yaml'
 import { attribute, digraph, toDot } from 'ts-graphviz'
 // import { Place, Transition, Flow } from './types'
 import { BindingsList } from './BindingsList'
+import { State, ReachabilityGraph } from './ReachabilityGraph'
 
 
 const hpccWasm = require('@hpcc-js/wasm')
 const fs = require('fs')
-
+const rgraph:ReachabilityGraph = new ReachabilityGraph()
 
 
 /**
@@ -65,6 +66,29 @@ class JsonEngine {
     }
   }
 
+  private systemToString() {
+     return this.isYaml ? YAML.stringify(this.system) : JSON.stringify(this.system)
+  }
+
+  private updateSystem() {
+    // 'system' based on variables updates
+    // We do not really need functions in it. Maybe edges labels too.
+    this.system = []
+    for(const place of this.places.values()) {
+      // sort place value HERE
+      this.system.push(place)
+    }
+    this.system.push(...this.transitions)
+  }
+
+  private initFromStateData(sys:any[]) {
+    sys.filter(el => el.type === 'place').forEach(place => {
+      this.places.set(place.id, place)
+    })
+    // set transitions array
+    this.transitions = sys.filter(el => el.type === 'transition')
+  }
+
   /**
    * Run the entire system representation a.k.a execute all transitions.
    * 
@@ -74,16 +98,43 @@ class JsonEngine {
     // Output system graph
     this.toSVG('G.svg')
 
+    const sysState:State = {
+      done: true,
+      data: this.system,
+      certificate: '',
+      transition: {name:'',src:null}
+    }
+
     let iter = 1 // to change filename after each loop
 
+    // Execute system notation
     this.transitions.forEach(t => {
       // Maybe check if current transition input places
       // have values (to know if already run) before 
       // running the function below below.
-      this.executeOneTransition(t, iter)
+      this.executeOneTransition(t, iter, sysState)
       
       iter++
     })
+
+    // Execute reached states
+    for(const state of rgraph.values()) {
+      if(! state.done) {
+        this.initFromStateData(state.data)
+
+        this.transitions.forEach(t => {
+          // Maybe check if current transition input places
+          // have values (to know if already run) before 
+          // running the function below below.
+          this.executeOneTransition(t, iter, state)
+          
+          iter++
+        })
+        state.done = true
+      }
+    }
+
+    // console.log("ReachabilityGraph Size: ", rgraph.size())
   }
 
   /**
@@ -94,10 +145,10 @@ class JsonEngine {
    * @param {any} transition : transition object
    * @return {void}
    */
-  private executeOneTransition(transition:any, iter:Number) {
+  private executeOneTransition(transition:any, iter:Number, srcState:State) {
     const equations = transition.equations
     const equationsMap:Map<String, any[]> = new Map()
-    const originalInPlacesValue:Map<String, any[]> = new Map()
+    const initialInPlacesValue:Map<String, any[]> = new Map()
 
     if(Array.isArray(equations[0])) {
       equations.forEach(eq => {
@@ -117,7 +168,7 @@ class JsonEngine {
       this.bindingsList[fn](_var, _place.value)
 
       // Keep original values
-      originalInPlacesValue.set(inPlace[0], _place.value)
+      initialInPlacesValue.set(inPlace[0], _place.value)
     })
 
     // Use of BindingList to bind functions calls results
@@ -130,6 +181,12 @@ class JsonEngine {
       }
     }
 
+    // Keep track of initial values for out places
+    const initialOutPlacesValue:Map<String, any[]> = new Map()
+    transition.outplaces.forEach(outPlace => {
+      initialOutPlacesValue.set(outPlace[0], this.places.get(outPlace[0]).value)
+    })
+
     // Make different outputs per iteration
     let _iter = 1
 
@@ -138,11 +195,14 @@ class JsonEngine {
       transition.outplaces.forEach(outPlace => {
         const _place = this.places.get(outPlace[0]) // get by id
         const _vars = outPlace[1] // get variables
-        _place.value = []
+        const outValue = []
 
         _vars.forEach(v => {
-          _place.value.push(m.get(v))
+          outValue.push(m.get(v))
         })
+
+        const initialInValue = initialOutPlacesValue.get(outPlace[0])
+        _place.value = initialInValue.length > 0 ? [...initialInValue, outValue] : [outValue]
       })
 
       // update in places with unused values
@@ -158,14 +218,27 @@ class JsonEngine {
         } else {
           usedValue = m.get(_var)
         }
-        _place.value = originalInPlacesValue.get(inPlace[0]).filter(v => v.toString() !== usedValue.toString())
+        _place.value = initialInPlacesValue.get(inPlace[0]).filter(v => v.toString() !== usedValue.toString())
       })
 
-      // output SVG
-      this.toSVG(`G${iter}-${_iter}.svg`)
-          
-      // output notation
-      this.toNotation(`G${iter}-${_iter}`)
+      // update system attribute
+      this.updateSystem()
+
+      const hash = this.systemToString()
+
+      if(! rgraph.has(hash)) {
+        rgraph.add(hash, {
+          done: false,
+          data: this.system,
+          certificate: '',
+          transition: {name: transition.id, src:srcState}
+        })
+        // output SVG
+        this.toSVG(`G${iter}-${_iter}.svg`)
+            
+        // output notation
+        this.toNotation(`G${iter}-${_iter}`)
+      }
 
       _iter++
     }
@@ -179,14 +252,8 @@ class JsonEngine {
    * @return {void}
    */
   private toNotation(filename:String) {
-    // 'system' based on variables updates
-    // We do not really need functions in it. Maybe edges labels too.
-    const sys = []
-    for(const place of this.places.values()) sys.push(place)
-    sys.push(...this.transitions)
-
     const dest = './output/' + (this.isYaml ? `yaml/${filename}.yaml` : `json/${filename}.json`)
-    fs.writeFileSync(dest, this.isYaml ? YAML.stringify(sys) : JSON.stringify(sys))
+    fs.writeFileSync(dest, this.systemToString())
     console.log(`Text '${dest}' written.`)
   }
 
