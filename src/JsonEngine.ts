@@ -2,12 +2,10 @@ import YAML from 'yaml'
 import { attribute, digraph, toDot } from 'ts-graphviz'
 // import { Place, Transition, Flow } from './types'
 import { BindingsList } from './BindingsList'
-import { State, ReachabilityGraph } from './ReachabilityGraph'
 
 
 const hpccWasm = require('@hpcc-js/wasm')
 const fs = require('fs')
-const rgraph:ReachabilityGraph = new ReachabilityGraph()
 
 
 /**
@@ -21,13 +19,9 @@ class JsonEngine {
   places : Map<String, any> = new Map()
   fnMap: Map<String, Map<String, String>> = new Map()
   bindingsList:BindingsList = new BindingsList()
-
-
-  constructor(filename:String) {
-    this.isYaml = filename.endsWith('.yaml')
-
-    this.init(filename)
-  }
+  // Used as a stack of filenames to execute 
+  // transitions in them after reading
+  fileslist : String[] = []
 
   /**
    * @private
@@ -41,13 +35,7 @@ class JsonEngine {
       const data = fs.readFileSync(filename, 'utf8')
       const sys = this.isYaml ? YAML.parse(data) : JSON.parse(data)
 
-      // Set places map
-      sys.filter(el => el.type === 'place').forEach(place => {
-        this.places.set(place.id, place)
-      })
-
-      // set transitions array
-      this.transitions = sys.filter(el => el.type === 'transition')
+      this.initFromStateData(sys)
 
       // Set functions map
       sys.filter(el => Array.isArray(el)).forEach(fn => {
@@ -59,17 +47,25 @@ class JsonEngine {
         }
       })
       // Set system
-      this.system = sys
+      // this.system = sys
 
-    } catch (err) {
-      console.error(err)
-    }
+    } catch (e) { console.error(e) }
   }
 
-  private systemToString() {
-     return this.isYaml ? YAML.stringify(this.system) : JSON.stringify(this.system)
+  /**
+   * Make a stringify version
+   * @param {any} append : whatever to append to the system array
+   *
+   * @return {string}
+   */
+  private systemToString(append:any='') {
+    this.system.push(append)
+    return this.isYaml ? YAML.stringify(this.system) : JSON.stringify(this.system)
   }
 
+  /**
+   * Update system JSON array
+   */
   private updateSystem() {
     // 'system' based on variables updates
     // We do not really need functions in it. Maybe edges labels too.
@@ -81,12 +77,19 @@ class JsonEngine {
     this.system.push(...this.transitions)
   }
 
+  /**
+   * Init 'places' & 'transitions' from a system JSON notation
+   * @param {any[]} sys [description]
+   */
   private initFromStateData(sys:any[]) {
+    // Set places map
     sys.filter(el => el.type === 'place').forEach(place => {
       this.places.set(place.id, place)
     })
     // set transitions array
     this.transitions = sys.filter(el => el.type === 'transition')
+    // set system
+    this.system = sys
   }
 
   /**
@@ -94,16 +97,12 @@ class JsonEngine {
    * 
    * @return {void}
    */
-  execute() {
+  run(filename:String) {
+    this.isYaml = filename.endsWith('.yaml')
+    this.init(filename)
+
     // Output system graph
     this.toSVG('G.svg')
-
-    const sysState:State = {
-      done: true,
-      data: this.system,
-      certificate: '',
-      transition: {name:'',src:null}
-    }
 
     let iter = 1 // to change filename after each loop
 
@@ -112,29 +111,25 @@ class JsonEngine {
       // Maybe check if current transition input places
       // have values (to know if already run) before 
       // running the function below below.
-      this.executeOneTransition(t, iter, sysState)
-      
+      this.executeOneTransition(t, iter, null)
       iter++
     })
 
-    // Execute reached states
-    for(const state of rgraph.values()) {
-      if(! state.done) {
-        this.initFromStateData(state.data)
+    // Execute reached states by reading outputed files
+    while(this.fileslist.length > 0)
+    {
+      try {
+        const filename = this.fileslist.pop()
+        const data = fs.readFileSync(filename, 'utf8')
+        const sys = this.isYaml ? YAML.parse(data) : JSON.parse(data)
+        this.initFromStateData(sys)
 
         this.transitions.forEach(t => {
-          // Maybe check if current transition input places
-          // have values (to know if already run) before 
-          // running the function below below.
-          this.executeOneTransition(t, iter, state)
-          
+          this.executeOneTransition(t, iter, filename)
           iter++
         })
-        state.done = true
-      }
+      } catch(e) { console.log(e) }
     }
-
-    // console.log("ReachabilityGraph Size: ", rgraph.size())
   }
 
   /**
@@ -143,9 +138,10 @@ class JsonEngine {
    * and create objects for output places.
    * 
    * @param {any} transition : transition object
+   * 
    * @return {void}
    */
-  private executeOneTransition(transition:any, iter:Number, srcState:State) {
+  private executeOneTransition(transition:any, iter:Number, srcFilename:String) {
     const equations = transition.equations
     const equationsMap:Map<String, any[]> = new Map()
     const initialInPlacesValue:Map<String, any[]> = new Map()
@@ -224,21 +220,14 @@ class JsonEngine {
       // update system attribute
       this.updateSystem()
 
-      const hash = this.systemToString()
-
-      if(! rgraph.has(hash)) {
-        rgraph.add(hash, {
-          done: false,
-          data: this.system,
-          certificate: '',
-          transition: {name: transition.id, src:srcState}
-        })
-        // output SVG
-        this.toSVG(`G${iter}-${_iter}.svg`)
+      // output svg
+      this.toSVG(`G${iter}-${_iter}.svg`)
             
-        // output notation
-        this.toNotation(`G${iter}-${_iter}`)
-      }
+      // output notation
+      this.toNotation(`G${iter}-${_iter}`, {
+        transition: transition.id,
+        src: srcFilename
+      })
 
       _iter++
     }
@@ -249,12 +238,15 @@ class JsonEngine {
    * Output graph notation into a JSON/YAML file.
    * 
    * @param filename {String} : output filename without extension
+   * @param {any} append : whatever to append to the system array
+   * 
    * @return {void}
    */
-  private toNotation(filename:String) {
+  private toNotation(filename:String, append:any) {
     const dest = './output/' + (this.isYaml ? `yaml/${filename}.yaml` : `json/${filename}.json`)
-    fs.writeFileSync(dest, this.systemToString())
+    fs.writeFileSync(dest, this.systemToString(append))
     console.log(`Text '${dest}' written.`)
+    this.fileslist.push(dest)
   }
 
   /**
@@ -262,6 +254,7 @@ class JsonEngine {
    * Create the SVG graph image
    * 
    * @param {String} outputFilename
+   * 
    * @return {void}
    */
   private toSVG(outputFilename:String) {
@@ -322,6 +315,5 @@ class JsonEngine {
 /////////////////////////////////////////////////
 
 
-const engine = new JsonEngine('./json/system.json')
-
-engine.execute()
+// Execute transitions
+new JsonEngine().run('./json/system.json')
