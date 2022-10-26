@@ -84,6 +84,7 @@ class ReachabilityGraph {
     } catch(e) { console.log(e) }
 
     this.toSVG('ReachabilityGraph.svg')
+    this.toJSON('ReachabilityGraph.json')
   }
 
 
@@ -124,6 +125,40 @@ class ReachabilityGraph {
     });
 
     console.log(`Graph '${outputFilename}' generated.`)
+  }
+
+  /**
+   * Output a JSON file
+   * @return {void}
+   */
+  private toJSON(outputFilename:String)
+  {
+    let data = []
+    this.nodes.set("system", {data:[],sources:[],transition:""})
+
+    for(let entry of this.nodes.entries()) {
+
+      let successors = []
+      for(let _entry of this.nodes.entries()) {
+        if(entry[0] !== _entry[0] && _entry[1].sources.includes(entry[0])) {
+          successors.push({
+            target: _entry[0],
+            transition: _entry[1].transition
+          })
+        }
+      }
+
+      data.push({
+        id: entry[0],
+        // data: entry[1].data,
+        successors: successors,
+      })
+    }
+
+    try {
+      fs.writeFileSync('./output/json/' + outputFilename, JSON.stringify(data))
+      console.log(`JSON notation '${outputFilename}' generated.`)
+    } catch(e) { console.error(e) }
   }
 }
 
