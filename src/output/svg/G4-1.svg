@@ -49,7 +49,7 @@
 <g id="node4" class="node">
 <title>client&#45;with&#45;money</title>
 <ellipse fill="none" stroke="black" cx="301.51" cy="-18" rx="122.78" ry="18"/>
-<text text-anchor="middle" x="301.51" y="-13.8" font-family="Times,serif" font-size="14.00">Bob,120 EUR Alice,50 EUR</text>
+<text text-anchor="middle" x="301.51" y="-13.8" font-family="Times,serif" font-size="14.00">Alice,50 EUR Bob,120 EUR</text>
 </g>
 <!-- take&#45;home&#45;&gt;vendor&#45;with&#45;item -->
 <g id="edge3" class="edge">

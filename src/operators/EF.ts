@@ -1,13 +1,17 @@
 const fs = require('fs')
 
-interface ReachableState {
-  id:String,
-  successors:ReachableState[]
+class RGTransition {
+  name!:string
+  target!: ReachableState
 }
 
+export class ReachableState {
+  data: any[]
+  name: string = ''
+  outGoingTransition: RGTransition[]=[]
+}
 
-
-class ExistFinallyOperator {
+export class ExistFinallyOperator {
 
   example: ReachableState[] = []
   todo: ReachableState[][] = []
@@ -21,56 +25,30 @@ class ExistFinallyOperator {
   find(start:ReachableState, cb:Function) { // return bool
     let firstPath = []
     firstPath.push(start)
-    todo.push(firstPath)
+    this.todo.push(firstPath)
 
-    while(todo.length > 0) {
-      let currentPath = todo.unshift()
+    while(this.todo.length > 0) {
+      let currentPath:ReachableState[] = this.todo.shift()
       let currentState:ReachableState = currentPath[currentPath.length-1]
 
-      done.push(currentState)
+      this.done.push(currentState)
 
       if(cb(currentState)) {
         // construct the example path
-        example = currentPath
+        this.example = currentPath
         
         return true
       }
 
       // go for successors
-      for(let next of currentState.successors) {
-        if(! done.includes(next)) {
+      for(let next of currentState.outGoingTransition) {
+        if(! this.done.includes(next.target)) {
           let nextPath = [...currentPath] // copy it ?
-          nextPath.push(next)
-          todo.push(nextPath)
+          nextPath.push(next.target)
+          this.todo.push(nextPath)
         }
       }
     }
     return false
   }
 }
-
-
-
-//////////
-
-
-let states:ReachableState[] = []
-
-try {
-  const json = JSON.parse( fs.readFileSync(jsonPath, 'utf8') )
-  json.forEach(el => {
-    states.push({
-      id: el.id,
-      successors: []//?
-    })
-  })
-}
-
-const fn = (state:ReachableState) => {
-  // Read file by using its id
-  return true
-}
-
-const initState = states.filter(el => el.id === 'system')[0]
-
-new EF().find(initState, fn)

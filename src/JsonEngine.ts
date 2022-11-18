@@ -2,10 +2,13 @@ import YAML from 'yaml'
 import { attribute, digraph, toDot } from 'ts-graphviz'
 // import { Place, Transition, Flow } from './types'
 import { BindingsList } from './BindingsList'
+import { ReachabilityGraph, ReachableState } from './ReachabilityGraph'
+import { ExistFinallyOperator } from './operators/EF'
 
 
 const hpccWasm = require('@hpcc-js/wasm')
 const fs = require('fs')
+const rgraph:ReachabilityGraph = new ReachabilityGraph()
 
 
 /**
@@ -21,7 +24,7 @@ class JsonEngine {
   bindingsList:BindingsList = new BindingsList()
   // Used as a stack of filenames to execute 
   // transitions in them after reading
-  fileslist : String[] = []
+  fileslist:String[] = []
 
   /**
    * @private
@@ -61,6 +64,18 @@ class JsonEngine {
   private systemToString(append:any='') {
     this.system.push(append)
     return this.isYaml ? YAML.stringify(this.system) : JSON.stringify(this.system)
+  }
+
+  /**
+   * Make a key with places values (only) sorted
+   * @param {any[]} sys [description]
+   */
+  private hashKeyFromSystem() {
+    let key = ""
+    this.system.filter(el => el.type === 'place').forEach(place => {
+       key += place.value.sort().join('')
+    })
+    return key
   }
 
   /**
@@ -106,12 +121,20 @@ class JsonEngine {
 
     let iter = 1 // to change filename after each loop
 
+    const initState:ReachableState = {
+      name: 'system',
+      data: this.system,
+      outGoingTransition: []
+    }
+
+    rgraph.stateMap.set('system', initState)
+
     // Execute system notation
     this.transitions.forEach(t => {
       // Maybe check if current transition input places
       // have values (to know if already run) before 
       // running the function below below.
-      this.executeOneTransition(t, iter, null)
+      this.executeOneTransition(t, iter, null, initState)
       iter++
     })
 
@@ -124,12 +147,18 @@ class JsonEngine {
         const sys = this.isYaml ? YAML.parse(data) : JSON.parse(data)
         this.initFromStateData(sys)
 
+        const currentState:ReachableState = rgraph.stateMap.get(this.hashKeyFromSystem())
+
         this.transitions.forEach(t => {
-          this.executeOneTransition(t, iter, filename)
+          this.executeOneTransition(t, iter, filename, currentState)
           iter++
         })
       } catch(e) { console.log(e) }
     }
+
+    // Reachability graph outputs
+    rgraph.toSVG('ReachabilityGraph.svg')
+    // rgraph.toJSON('ReachabilityGraph.json')
   }
 
   /**
@@ -141,7 +170,7 @@ class JsonEngine {
    * 
    * @return {void}
    */
-  private executeOneTransition(transition:any, iter:Number, srcFilename:String) {
+  private executeOneTransition(transition:any, iter:Number, srcFilename:String, srcSate:ReachableState) {
     const equations = transition.equations
     const equationsMap:Map<String, any[]> = new Map()
     const initialInPlacesValue:Map<String, any[]> = new Map()
@@ -221,13 +250,47 @@ class JsonEngine {
       this.updateSystem()
 
       // output svg
-      this.toSVG(`G${iter}-${_iter}.svg`)
+      // this.toSVG(`G${iter}-${_iter}.svg`)
             
       // output notation
-      this.toNotation(`G${iter}-${_iter}`, {
-        transition: transition.id,
-        src: srcFilename
-      })
+      // this.toNotation(`G${iter}-${_iter}`, {
+      //   transition: transition.id,
+      //   src: srcFilename
+      // })
+
+      const hash = this.hashKeyFromSystem()
+      if(! rgraph.stateMap.has(hash)) {
+        const rstate:ReachableState = {
+          name: `G${iter}-${_iter}`,
+          data: this.system,
+          outGoingTransition: []
+          // transition: {name:transition.id, src:srcState}
+        }
+        srcSate.outGoingTransition.push({
+          name: transition.id,
+          target: rstate
+        })
+
+        rgraph.stateMap.set(hash, rstate)
+        
+        // output SVG
+        this.toSVG(`G${iter}-${_iter}.svg`)
+            
+        // output notation
+        this.toNotation(`G${iter}-${_iter}`, {
+          transition: transition.id,
+          src: srcFilename
+        })
+      } else {
+        const rgt = {
+          name: transition.id,
+          target: rgraph.stateMap.get(hash)
+        }
+
+        if(srcSate.outGoingTransition.findIndex(el => el.name = rgt.name) === -1) {
+          srcSate.outGoingTransition.push(rgt)
+        }
+      }
 
       _iter++
     }
@@ -317,3 +380,46 @@ class JsonEngine {
 
 // Execute transitions
 new JsonEngine().run('./json/system.json')
+
+
+function compare(arr1, arr2) {
+  let res = true
+  if(Array.isArray(arr1) && Array.isArray(arr2)) {
+    arr1.forEach((el, index) => {
+      if(el !== arr2[index]) res = false
+    })
+    return res
+  }
+  return arr1 == arr2
+}
+
+
+// Exist Finally Operator
+function v1ShoesPredicate(state:ReachableState) {
+  const places = state.data.filter(el => el.type === 'place')
+
+  for(const place of places) {
+    if(place.value.findIndex(arr => compare(arr, ['V1', 'shoes'])) !== -1) {
+      return true
+    }
+  }
+  return false
+}
+
+// init state
+const systemState:ReachableState = rgraph.stateMap.get('system')
+
+const ef = new ExistFinallyOperator()
+
+if(ef.find(systemState, v1ShoesPredicate)) {
+  console.log("FOUND PATH:")
+  let path = ""
+  for(const state of ef.example) {
+    path += state.name + " -> "
+  }
+  path += "/"
+  console.log(path)
+} else {
+  console.log("NOT FOUND")
+}
+
