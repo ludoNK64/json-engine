@@ -25,6 +25,7 @@ class JsonEngine {
   // Used as a stack of filenames to execute 
   // transitions in them after reading
   fileslist:String[] = []
+  fn: {}
 
   /**
    * @private
@@ -38,20 +39,20 @@ class JsonEngine {
       const data = fs.readFileSync(filename, 'utf8')
       const sys = this.isYaml ? YAML.parse(data) : JSON.parse(data)
 
-      this.initFromStateData(sys)
+      this.initFromStateData(sys.state)
+
+      this.fn = require(sys.functions)
 
       // Set functions map
-      sys.filter(el => Array.isArray(el)).forEach(fn => {
+      /*sys.filter(el => Array.isArray(el)).forEach(fn => {
         const _f = this.fnMap.get(fn[0])
         if(typeof _f !== 'undefined') {
           _f.set(fn[1], fn[2])
         } else { // 'f' => ('shirt', 'price')
           this.fnMap.set(fn[0], new Map([ [fn[1], fn[2]] ]))
         }
-      })
-      // Set system
-      // this.system = sys
-
+      })*/
+  
     } catch (e) { console.error(e) }
   }
 
@@ -94,17 +95,17 @@ class JsonEngine {
 
   /**
    * Init 'places' & 'transitions' from a system JSON notation
-   * @param {any[]} sys [description]
+   * @param {any[]} state [description]
    */
-  private initFromStateData(sys:any[]) {
+  private initFromStateData(state:any[]) {
     // Set places map
-    sys.filter(el => el.type === 'place').forEach(place => {
+    state.filter(el => el.type === 'place').forEach(place => {
       this.places.set(place.id, place)
     })
     // set transitions array
-    this.transitions = sys.filter(el => el.type === 'transition')
+    this.transitions = state.filter(el => el.type === 'transition')
     // set system
-    this.system = sys
+    this.system = state
   }
 
   /**
@@ -145,7 +146,7 @@ class JsonEngine {
         const filename = this.fileslist.pop()
         const data = fs.readFileSync(filename, 'utf8')
         const sys = this.isYaml ? YAML.parse(data) : JSON.parse(data)
-        this.initFromStateData(sys)
+        this.initFromStateData(sys) // it's only the state array here
 
         const currentState:ReachableState = rgraph.stateMap.get(this.hashKeyFromSystem())
 
@@ -187,6 +188,8 @@ class JsonEngine {
     transition.inplaces.forEach(inPlace => {
       const _place = this.places.get(inPlace[0]) // get by id
       const _var = inPlace[1] // get variables
+
+      if(typeof _var === 'number') return
       
       // use of BindingList
       const fn = Array.isArray(_var) ? "expandList" : "expand"
@@ -196,15 +199,30 @@ class JsonEngine {
       initialInPlacesValue.set(inPlace[0], _place.value)
     })
 
-    // Use of BindingList to bind functions calls results
-    for(const k of equationsMap.keys()) {
-      const v = equationsMap.get(k)
-      for(const m of this.bindingsList.bindings) {
-        this.bindingsList.expandEquation(k, v[1], _ => {
-          return this.fnMap.get(v[0]).get(_)
-        })
-      }
+    // Empty bindings ? -> return
+    if(this.bindingsList.bindings.length === 0) {
+      // console.log("Leaving transition '", transition.id, "' because of empty bindings...")
+      return
     }
+
+    // Use of BindingList to bind functions calls results
+    // for(const k of equationsMap.keys()) {
+    //   const v = equationsMap.get(k)
+    //   for(const m of this.bindingsList.bindings) {
+    //     this.bindingsList.expandEquation(k, v[1], _ => {
+    //       // return this.fnMap.get(v[0]).get(_)
+    //       let params = v[1]
+    //       let _p = v[1].split(',')
+    //       _p.forEach(el => {
+    //         console.log("Replacing...", el)
+    //         params.replace(el, _)
+    //         console.log("_ = ", _)
+    //       })
+    //       console.log("Call to: ", v[0], " with: ", params)
+    //       return this.fn[v[0]](...params.split(','))
+    //     })
+    //   }
+    // }
 
     // Keep track of initial values for out places
     const initialOutPlacesValue:Map<String, any[]> = new Map()
@@ -216,6 +234,11 @@ class JsonEngine {
     let _iter = 1
 
     for(const m of this.bindingsList.bindings) {
+      // Is there any predicate ?
+      if(transition.predicate && !this.fn[transition.predicate](...m.values())) {
+        break
+      }
+
       // fill output places
       transition.outplaces.forEach(outPlace => {
         const _place = this.places.get(outPlace[0]) // get by id
@@ -223,11 +246,19 @@ class JsonEngine {
         const outValue = []
 
         _vars.forEach(v => {
-          outValue.push(m.get(v))
+          // Compute result value
+          const _fn = equationsMap.get(v)
+          const _m = new Map()
+          
+          _fn[1].split(',').forEach(el => {
+            _m.set(el, m.get(el))
+          })
+          
+          outValue.push(this.fn[_fn[0]](..._m.values()))
         })
 
         const initialInValue = initialOutPlacesValue.get(outPlace[0])
-        _place.value = initialInValue.length > 0 ? [...initialInValue, outValue] : [outValue]
+        _place.value = initialInValue.length > 0 ? [...initialInValue, outValue] : outValue // [outValue]
       })
 
       // update in places with unused values
@@ -249,15 +280,6 @@ class JsonEngine {
       // update system attribute
       this.updateSystem()
 
-      // output svg
-      // this.toSVG(`G${iter}-${_iter}.svg`)
-            
-      // output notation
-      // this.toNotation(`G${iter}-${_iter}`, {
-      //   transition: transition.id,
-      //   src: srcFilename
-      // })
-
       const hash = this.hashKeyFromSystem()
       if(! rgraph.stateMap.has(hash)) {
         const rstate:ReachableState = {
@@ -267,7 +289,7 @@ class JsonEngine {
           // transition: {name:transition.id, src:srcState}
         }
         srcSate.outGoingTransition.push({
-          name: transition.id,
+          name: transition.value.join(' '), // || transition.id,
           target: rstate
         })
 
@@ -379,10 +401,10 @@ class JsonEngine {
 
 
 // Execute transitions
-new JsonEngine().run('./json/system.json')
+new JsonEngine().run('./json/a100.json')
 
 
-function compare(arr1, arr2) {
+/*function compare(arr1, arr2) {
   let res = true
   if(Array.isArray(arr1) && Array.isArray(arr2)) {
     arr1.forEach((el, index) => {
@@ -419,7 +441,7 @@ if(ef.find(systemState, v1ShoesPredicate)) {
   }
   path += "/"
   console.log(path)
-} else {
+} else {kb
   console.log("NOT FOUND")
-}
+}*/
 

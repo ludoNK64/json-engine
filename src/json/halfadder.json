@@ -1,0 +1,44 @@
+{
+  "functions": "./fn/halfadder.js",
+  "state": [
+    {
+      "id": "X",
+      "type": "place",
+      "value": [5]
+    },
+    {
+      "id": "Y",
+      "type": "place",
+      "value": [7]
+    },
+    {
+      "id": "C",
+      "type": "place",
+      "value": []
+    },
+    {
+      "id": "S",
+      "type": "place",
+      "value": []
+    },
+
+    {
+      "id": "sup-eq-ten",
+      "type": "transition",
+      "value": ["x+y>=10"],
+      "predicate": "ge10",
+      "inplaces": [ ["X", "x"], ["Y", "y"] ],
+      "outplaces": [ ["C", ["c"]], ["S", ["r"]] ],
+      "equations": [ ["c", ["h", "x,y"]], ["r", ["g", "x,y"]] ]
+    },
+    {
+      "id": "inf-ten",
+      "type": "transition",
+      "value": ["x+y<10"],
+      "predicate": "lt10",
+      "inplaces": [ ["X", "x"], ["Y", "y"] ],
+      "outplaces": [ ["C", ["c"]], ["S", ["s"]] ],
+      "equations": [ ["c", ["h", "x,y"]], ["s", ["f", "x,y"]] ]
+    }
+  ]
+}

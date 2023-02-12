@@ -1,0 +1,49 @@
+{
+  "functions": "./fn/fulladder.js",
+  "state": [
+    {
+      "id": "X",
+      "type": "place",
+      "value": [1]
+    },
+    {
+      "id": "Y",
+      "type": "place",
+      "value": [2]
+    },
+    {
+      "id": "Z",
+      "type": "place",
+      "value": [1]
+    },
+    {
+      "id": "C",
+      "type": "place",
+      "value": []
+    },
+    {
+      "id": "S",
+      "type": "place",
+      "value": []
+    },
+
+    {
+      "id": "sup-eq-ten",
+      "type": "transition",
+      "value": ["x+y+z>=10"],
+      "predicate": "ge10",
+      "inplaces": [ ["X", "x"], ["Y", "y"], ["Z", "z"] ],
+      "outplaces": [ ["C", ["c"]], ["S", ["r"]] ],
+      "equations": [ ["c", ["h", "x,y,z"]], ["r", ["g", "x,y,z"]] ]
+    },
+    {
+      "id": "inf-ten",
+      "type": "transition",
+      "value": ["x+y+z<10"],
+      "predicate": "lt10",
+      "inplaces": [ ["X", "x"], ["Y", "y"], ["Z", "z"] ],
+      "outplaces": [ ["C", ["c"]], ["S", ["s"]] ],
+      "equations": [ ["c", ["h", "x,y,z"]], ["s", ["f", "x,y,z"]] ]
+    }
+  ]
+}
