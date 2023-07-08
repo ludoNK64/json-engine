@@ -41,6 +41,7 @@ class JsonEngine {
 
       this.initFromStateData(sys.state)
 
+      // Load functions
       this.fn = require(sys.functions)
 
       // Set functions map
@@ -144,6 +145,7 @@ class JsonEngine {
     {
       try {
         const filename = this.fileslist.pop()
+        console.log("\nFilename: ", filename)
         const data = fs.readFileSync(filename, 'utf8')
         const sys = this.isYaml ? YAML.parse(data) : JSON.parse(data)
         this.initFromStateData(sys) // it's only the state array here
@@ -175,6 +177,9 @@ class JsonEngine {
     const equations = transition.equations
     const equationsMap:Map<String, any[]> = new Map()
     const initialInPlacesValue:Map<String, any[]> = new Map()
+    let exit = false
+
+    console.log("On transition: ", transition.id, "...")
 
     if(Array.isArray(equations[0])) {
       equations.forEach(eq => {
@@ -189,7 +194,11 @@ class JsonEngine {
       const _place = this.places.get(inPlace[0]) // get by id
       const _var = inPlace[1] // get variables
 
-      if(typeof _var === 'number') return
+      if(_place.value.length === 0) { // transition could not be enabled
+        exit = true
+        return
+      }
+      // if(typeof _var === 'number') return
       
       // use of BindingList
       const fn = Array.isArray(_var) ? "expandList" : "expand"
@@ -198,31 +207,10 @@ class JsonEngine {
       // Keep original values
       initialInPlacesValue.set(inPlace[0], _place.value)
     })
+    // Can continue ?
+    if(exit) return
 
-    // Empty bindings ? -> return
-    if(this.bindingsList.bindings.length === 0) {
-      // console.log("Leaving transition '", transition.id, "' because of empty bindings...")
-      return
-    }
-
-    // Use of BindingList to bind functions calls results
-    // for(const k of equationsMap.keys()) {
-    //   const v = equationsMap.get(k)
-    //   for(const m of this.bindingsList.bindings) {
-    //     this.bindingsList.expandEquation(k, v[1], _ => {
-    //       // return this.fnMap.get(v[0]).get(_)
-    //       let params = v[1]
-    //       let _p = v[1].split(',')
-    //       _p.forEach(el => {
-    //         console.log("Replacing...", el)
-    //         params.replace(el, _)
-    //         console.log("_ = ", _)
-    //       })
-    //       console.log("Call to: ", v[0], " with: ", params)
-    //       return this.fn[v[0]](...params.split(','))
-    //     })
-    //   }
-    // }
+    console.log("Bindings: ", this.bindingsList.bindings)
 
     // Keep track of initial values for out places
     const initialOutPlacesValue:Map<String, any[]> = new Map()
@@ -305,7 +293,7 @@ class JsonEngine {
         })
       } else {
         const rgt = {
-          name: transition.id,
+          name: transition.value.join(' '), // transition.id,
           target: rgraph.stateMap.get(hash)
         }
 
@@ -401,47 +389,39 @@ class JsonEngine {
 
 
 // Execute transitions
-new JsonEngine().run('./json/a100.json')
-
-
-/*function compare(arr1, arr2) {
-  let res = true
-  if(Array.isArray(arr1) && Array.isArray(arr2)) {
-    arr1.forEach((el, index) => {
-      if(el !== arr2[index]) res = false
-    })
-    return res
-  }
-  return arr1 == arr2
-}
+// new JsonEngine().run('./json/a1000.json')
+new JsonEngine().run('./json/vending-machine.json')
 
 
 // Exist Finally Operator
-function v1ShoesPredicate(state:ReachableState) {
-  const places = state.data.filter(el => el.type === 'place')
 
-  for(const place of places) {
-    if(place.value.findIndex(arr => compare(arr, ['V1', 'shoes'])) !== -1) {
-      return true
-    }
-  }
-  return false
-}
+// Check if in a reachable state, we have the expected sum in the same order
+// function sumResultPredicate(state:ReachableState, sum='900') {
+//   const sumPlaces = state.data.filter(el => /^S[0-9]$/.test(el.id)) // && el.type === 'place'
 
-// init state
-const systemState:ReachableState = rgraph.stateMap.get('system')
+//   let strRes = ""
+//   sumPlaces.reverse()
+//   sumPlaces.forEach(s => strRes += s.value[0] )
 
-const ef = new ExistFinallyOperator()
+//   console.log(strRes)
 
-if(ef.find(systemState, v1ShoesPredicate)) {
-  console.log("FOUND PATH:")
-  let path = ""
-  for(const state of ef.example) {
-    path += state.name + " -> "
-  }
-  path += "/"
-  console.log(path)
-} else {kb
-  console.log("NOT FOUND")
-}*/
+//   return strRes === sum ? true : false
+// }
+
+// // init state
+// const systemState:ReachableState = rgraph.stateMap.get('system')
+
+// const ef = new ExistFinallyOperator()
+
+// if(ef.find(systemState, sumResultPredicate)) {
+//   console.log("\n\n\tFOUND PATH:")
+//   let path = ""
+//   for(const state of ef.example) {
+//     path += state.name + " -> "
+//   }
+//   path += "/"
+//   console.log(path)
+// } else {
+//   console.log("\nPATH NOT FOUND\n")
+// }
 

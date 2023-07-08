@@ -13,7 +13,6 @@
 <g id="node1" class="node">
 <title>ready&#45;for&#45;insertion</title>
 <ellipse fill="none" stroke="black" cx="146.67" cy="-728.4" rx="27" ry="18"/>
-<text text-anchor="middle" x="146.67" y="-724.2" font-family="Times,serif" font-size="14.00">o</text>
 </g>
 <!-- insert&#45;coin -->
 <g id="node6" class="node">
@@ -63,6 +62,7 @@
 <g id="node3" class="node">
 <title>ready&#45;to&#45;dispense</title>
 <ellipse fill="none" stroke="black" cx="116.67" cy="-373.2" rx="27" ry="18"/>
+<text text-anchor="middle" x="116.67" y="-369" font-family="Times,serif" font-size="14.00">O</text>
 </g>
 <!-- dispense&#45;candy -->
 <g id="node9" class="node">

@@ -19,8 +19,8 @@ export class ExistFinallyOperator {
 
   /**
    * Find a final existing state
-   * @param {[type]}   ReachableState start         root node of the reachability graph
-   * @param {Function} cb             callback to test if the current state is the solution
+   * @param {[type]}   ReachableState start root node of the reachability graph
+   * @param {Function} cb callback to test if the current state is the solution
    */
   find(start:ReachableState, cb:Function) { // return bool
     let firstPath = []

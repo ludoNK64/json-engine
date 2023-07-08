@@ -1,0 +1,73 @@
+{
+  "functions": "./fn/vending-machine.js",
+  "state": [
+    {
+      "id": "ready-for-insertion",
+      "type": "place",
+      "value": ["o"]
+    },
+    {
+      "id": "holding-coin",
+      "type": "place",
+      "value": []
+    },
+    {
+      "id": "ready-to-dispense",
+      "type": "place",
+      "value": []
+    },
+    {
+      "id": "request-for-refill",
+      "type": "place",
+      "value": []
+    },
+    {
+      "id": "candy-storage",
+      "type": "place",
+      "value": ["c"]
+    },
+
+    {
+      "id": "insert-coin",
+      "type": "transition",
+      "value": ["insert coin"],
+      "inplaces": [["ready-for-insertion", "x"]],
+      "outplaces": [["holding-coin", ["x"]]],
+      "equations": [ ["x", ["f", "x"]] ]
+    },
+    {
+      "id": "accept-coin",
+      "type": "transition",
+      "value": ["accept coin"],
+      "predicate": "is_coin",
+      "inplaces": [["holding-coin", "x"]],
+      "outplaces": [["ready-to-dispense", ["x"]]],
+      "equations": [ ["x", ["g", "x"]] ]
+    },
+    {
+      "id": "reject-coin",
+      "type": "transition",
+      "value": ["reject join"],
+      "predicate": "not_coin",
+      "inplaces": [["holding-coin", "x"]],
+      "outplaces": [["ready-for-insertion", ["x"]]],
+      "equations": [ ["x", ["f", "x"]] ]
+    },
+    {
+      "id": "dispense-candy",
+      "type": "transition",
+      "value": ["dispense candy"],
+      "inplaces": [["ready-to-dispense", "x"], ["candy-storage", "y"]],
+      "outplaces": [["request-for-refill", ["y"]], ["ready-for-insertion", ["x"]]],
+      "equations": [ ["x", ["h", "x"]], ["y", ["f", "y"]] ]
+    },
+    {
+      "id": "refill",
+      "type": "transition",
+      "value": ["refill"],
+      "inplaces": [["request-for-refill", "y"]],
+      "outplaces": [["candy-storage", ["y"]]],
+      "equations": [ ["y", ["f", "y"]] ]
+    }
+  ]
+}
